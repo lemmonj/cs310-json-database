@@ -5,12 +5,9 @@
  */
 package cs310.json.database;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
+import java.sql.*;
+import org.json.simple.*;
+
 
 /**
  *
@@ -21,23 +18,28 @@ public class CS310JsonDatabase {
     /**
      * @param args the command line arguments
      */
-    public static void getJSONData() {
-    Connection conn = null;
+    public static void main(String[] args){
+        JSONArray results = getJSONData();
+        System.out.println(results);
+    }
+    public static JSONArray getJSONData() {
+        
+        JSONArray results = new JSONArray();
+        
+        Connection conn = null;
         PreparedStatement pstSelect = null, pstUpdate = null;
         ResultSet resultset = null;
         ResultSetMetaData metadata = null;
         
-        String query, key, value;
-        String newFirstName = "Alfred", newLastName = "Neuman";
-        
+        String query;
         boolean hasresults;
-        int resultCount, columnCount, updateCount = 0;
+        int resultCount, columnCount;
         
         try {
             
             /* Identify the Server */
             
-            String server = ("jdbc:mysql://localhost/db_test");
+            String server = ("jdbc:mysql://localhost/p2_test");
             String username = "root";
             String password = "CS310";
             System.out.println("Connecting to " + server + "...");
@@ -59,32 +61,8 @@ public class CS310JsonDatabase {
                 System.out.println("Connected Successfully!");
                 
                 // Prepare Update Query
-                
-                query = "INSERT INTO people (firstname, lastname) VALUES (?, ?)";
-                pstUpdate = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-                pstUpdate.setString(1, newFirstName);
-                pstUpdate.setString(2, newLastName);
-                
                 // Execute Update Query
-                
-                updateCount = pstUpdate.executeUpdate();
-                
                 // Get New Key; Print To Console
-                
-                if (updateCount > 0) {
-            
-                    resultset = pstUpdate.getGeneratedKeys();
-
-                    if (resultset.next()) {
-
-                        System.out.print("Update Successful!  New Key: ");
-                        System.out.println(resultset.getInt(1));
-
-                    }
-
-                }
-                
-                
                 /* Prepare Select Query */
                 
                 query = "SELECT * FROM people";
@@ -109,14 +87,13 @@ public class CS310JsonDatabase {
                         resultset = pstSelect.getResultSet();
                         metadata = resultset.getMetaData();
                         columnCount = metadata.getColumnCount();
-                        
+                        JSONArray headers = new JSONArray();
                         /* Get Column Names; Print as Table Header */
                         
-                        for (int i = 1; i <= columnCount; i++) {
+                        for (int i = 2; i <= columnCount; i++) {
 
-                            key = metadata.getColumnLabel(i);
+                            headers.add(metadata.getColumnLabel(i));
 
-                            System.out.format("%20s", key);
 
                         }
                         
@@ -125,25 +102,21 @@ public class CS310JsonDatabase {
                         while(resultset.next()) {
                             
                             /* Begin Next ResultSet Row */
-
+                            JSONObject dataSet = new JSONObject();
                             System.out.println();
                             
                             /* Loop Through ResultSet Columns; Print Values */
 
-                            for (int i = 1; i <= columnCount; i++) {
-
-                                value = resultset.getString(i);
-
-                                if (resultset.wasNull()) {
-                                    System.out.format("%20s", "NULL");
-                                }
-
-                                else {
-                                    System.out.format("%20s", value);
+                            for (int i = 0; i <= columnCount - 2; i++){
+                                for (int j = 1; j <= columnCount;j++){
+                                   String colName = (String)headers.get(i);
+                                   dataSet.put(headers.get(i), resultset.getString(colName));
                                 }
 
                             }
 
+                            results.add(dataSet);
+                            
                         }
                         
                     }
@@ -189,6 +162,9 @@ public class CS310JsonDatabase {
             if (pstUpdate != null) { try { pstUpdate.close(); pstUpdate = null; } catch (Exception e) {} }
             
         }   
+        
+        return results;
+        
     }
     
 }
